@@ -1,6 +1,8 @@
 console.log("Running Coingame.");
 
 const cache = {};
+var mode = undefined;
+var getTreeDelegate = undefined;
 
 const simulateMoves = function(game) {
    
@@ -80,7 +82,7 @@ const generateKey = function (game) {
     return coinCounts.join();
 }
 
-const getTree = function (game) {
+const getDownTree = function (game) {
     const key = generateKey(game);
     const winner = determineWinner(game);
     const node = { name: key, children: [], winner, game: [...game] };
@@ -98,6 +100,29 @@ const getTree = function (game) {
     }
 
     return node;
+}
+
+const searchUpToSteps = 5;
+const getUpTree = function (game) {
+	game = game.filter(e => e !== 0);
+	
+    const key = generateKey(game);
+	const parentWinner = determineWinner(game);
+    const node = { name: key, children: [], winner: parentWinner, game: [...game] };
+
+	game.push(0);
+	for (let i in game) {
+		const origSteps = game[i];
+		for (let step = 0; step < searchUpToSteps; step++) {
+			game[i]++;
+			if (determineWinner(game) !== parentWinner){
+				node.children.push({ name: generateKey(game), children: [], winner: determineWinner(game), game: [...game] });
+			}
+		}
+		game[i] = origSteps;
+	}
+	
+	return node;
 }
 
 const printCacheSize = function () {
@@ -128,7 +153,7 @@ const runTests = function () {
 
 const showTree = function (game) {
 
-    var treeData = [getTree(game)];
+    var treeData = [getTreeDelegate(game)];
     printCacheSize();
 
     // ************** Generate the tree diagram	 *****************
@@ -299,28 +324,42 @@ const showTree = function (game) {
         if (d.children) {
             d.children = null;
         } else {
-            d.children = getTree(d.game).children;
+            d.children = getTreeDelegate(d.game).children;
         }
         update(d);
     }
 }
 
 const showInitialTree = (function () {
-    showTree([1, 2, 3, 4, 5, 6]);
+	mode = "down";
+	getTreeDelegate = getDownTree;
+	showTree([1, 2, 3, 4, 5, 6]);
 })();
 
 const initInputs = (function () {
     const input = document.getElementById("gameInput");
-    const button = document.getElementById("loadTree");
+    const loadButton = document.getElementById("loadTree");
     const output = document.getElementById("loadTreeOutput");
+    const toggleUpDownButton = document.getElementById("toggleUpDown");
 
-    button.onclick = function () {
+    loadButton.onclick = function () {
         try {
             showTree(parseGameInput(input.value));
         } catch (err) {
             console.log(err)
             output.innerText = err;
         }
+    }
+    toggleUpDownButton.onclick = function () {
+        if(mode === "down"){
+			mode = "up";
+			getTreeDelegate = getUpTree;
+			showTree([]);
+		} else {
+			mode = "down";
+			getTreeDelegate = getDownTree;
+			showTree([1, 2, 3, 4, 5, 6]);
+		}
     }
 })();
 
